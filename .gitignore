@@ -1,28 +1,50 @@
+# ================================
 # Java / Maven
-backend/target/
+# ================================
+**/target/
 *.class
 
+# ================================
 # Node / React
-frontend/node_modules/
-frontend/dist/
+# ================================
+**/node_modules/
+**/dist/
 
+# ================================
 # Environment / Secrets
+# ================================
 .env
 .env.*
 !.env.example
 
+# Spring Boot local configuration
+**/application-local.properties
+**/application-secret.properties
+
+# Ignore application.properties if it contains secrets
+backend/key-management/src/main/resources/application.properties
+
+# ================================
 # IDE
+# ================================
 .idea/
 .vscode/
 *.iml
+*.iws
+*.ipr
 
+# ================================
 # OS
+# ================================
 .DS_Store
 Thumbs.db
 
+# ================================
 # Logs
+# ================================
 *.log
 
-# Local configuration / secrets
-application-local.properties
-application-secret.properties
+# ================================
+# Build files
+# ================================
+**/build/
