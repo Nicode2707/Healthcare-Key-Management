@@ -36,4 +36,7 @@ public class KeyMetadata {
     private LocalDateTime expiresAt;
 
     private LocalDateTime revokedAt;
+
+    @Column(nullable = false, length = 1000)
+    private String protectedKey;
 }

@@ -1,5 +1,6 @@
 package com.healthcare.keymanagement.controller;
 
+import com.healthcare.keymanagement.dto.KeyMetadataResponse;
 import com.healthcare.keymanagement.entity.KeyMetadata;
 import com.healthcare.keymanagement.service.KeyMetadataService;
 import lombok.RequiredArgsConstructor;
@@ -15,12 +16,33 @@ public class KeyMetadataController {
     private final KeyMetadataService service;
 
     @PostMapping
-    public KeyMetadata create(@RequestBody KeyMetadata keyMetadata) {
-        return service.create(keyMetadata);
+    public KeyMetadataResponse create(@RequestBody KeyMetadata keyMetadata) {
+
+        KeyMetadata saved = service.create(keyMetadata);
+
+        return toResponse(saved);
     }
 
     @GetMapping
-    public List<KeyMetadata> getAll() {
-        return service.getAll();
+    public List<KeyMetadataResponse> getAll() {
+
+        return service.getAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private KeyMetadataResponse toResponse(KeyMetadata key) {
+
+        return new KeyMetadataResponse(
+                key.getId(),
+                key.getKeyId(),
+                key.getAlgorithm(),
+                key.getKeyVersion(),
+                key.getStatus(),
+                key.getCreatedAt(),
+                key.getExpiresAt(),
+                key.getRevokedAt()
+        );
     }
 }
