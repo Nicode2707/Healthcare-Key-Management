@@ -1,10 +1,12 @@
 package com.healthcare.keymanagement.service;
 
 import com.healthcare.keymanagement.entity.KeyMetadata;
+import com.healthcare.keymanagement.entity.KeyStatus;
 import com.healthcare.keymanagement.repository.KeyMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -21,7 +23,7 @@ public class KeyMetadataService {
         String rawKey = aesKeyService.generateAes256Key();
 
         // 2. Protect the AES key
-        String protectedKey = keyProtectionService.protect(rawKey);
+        String protectedKey = keyProtectionService.protectKey(rawKey);
 
         // 3. Store ONLY protected key
         keyMetadata.setProtectedKey(protectedKey);
@@ -32,5 +34,21 @@ public class KeyMetadataService {
 
     public List<KeyMetadata> getAll() {
         return repository.findAll();
+    }
+
+    public KeyMetadata revokeKey(String keyId) {
+
+        KeyMetadata key = repository.findByKeyId(keyId)
+                .orElseThrow(() ->
+                        new RuntimeException("Key not found: " + keyId));
+
+        if (key.getStatus() == KeyStatus.REVOKED) {
+            throw new RuntimeException("Key is already revoked");
+        }
+
+        key.setStatus(KeyStatus.REVOKED);
+        key.setRevokedAt(LocalDateTime.now());
+
+        return repository.save(key);
     }
 }

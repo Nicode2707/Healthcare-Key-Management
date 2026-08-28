@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/keys")
@@ -16,7 +17,8 @@ public class KeyMetadataController {
     private final KeyMetadataService service;
 
     @PostMapping
-    public KeyMetadataResponse create(@RequestBody KeyMetadata keyMetadata) {
+    public KeyMetadataResponse create(
+            @RequestBody KeyMetadata keyMetadata) {
 
         KeyMetadata saved = service.create(keyMetadata);
 
@@ -29,7 +31,16 @@ public class KeyMetadataController {
         return service.getAll()
                 .stream()
                 .map(this::toResponse)
-                .toList();
+                .collect(Collectors.toList());
+    }
+
+    @PatchMapping("/{keyId}/revoke")
+    public KeyMetadataResponse revokeKey(
+            @PathVariable String keyId) {
+
+        KeyMetadata revoked = service.revokeKey(keyId);
+
+        return toResponse(revoked);
     }
 
     private KeyMetadataResponse toResponse(KeyMetadata key) {
