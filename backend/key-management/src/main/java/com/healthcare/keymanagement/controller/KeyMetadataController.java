@@ -20,7 +20,8 @@ public class KeyMetadataController {
     public KeyMetadataResponse create(
             @RequestBody KeyMetadata keyMetadata) {
 
-        KeyMetadata saved = service.create(keyMetadata);
+        KeyMetadata saved =
+                service.create(keyMetadata);
 
         return toResponse(saved);
     }
@@ -38,12 +39,24 @@ public class KeyMetadataController {
     public KeyMetadataResponse revokeKey(
             @PathVariable String keyId) {
 
-        KeyMetadata revoked = service.revokeKey(keyId);
+        KeyMetadata revoked =
+                service.revokeKey(keyId);
 
         return toResponse(revoked);
     }
 
-    private KeyMetadataResponse toResponse(KeyMetadata key) {
+    @PatchMapping("/{keyId}/rotate")
+    public KeyMetadataResponse rotateKey(
+            @PathVariable String keyId) {
+
+        KeyMetadata rotated =
+                service.rotateKey(keyId);
+
+        return toResponse(rotated);
+    }
+
+    private KeyMetadataResponse toResponse(
+            KeyMetadata key) {
 
         return new KeyMetadataResponse(
                 key.getId(),

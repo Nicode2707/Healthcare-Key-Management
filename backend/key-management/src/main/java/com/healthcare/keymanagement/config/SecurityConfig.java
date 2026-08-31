@@ -10,20 +10,16 @@ import org.springframework.context.annotation.Configuration;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 
 @Configuration
 @EnableWebSecurity
@@ -41,6 +37,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
     }
 
@@ -67,27 +64,92 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration) throws Exception {
+            AuthenticationConfiguration configuration
+    ) throws Exception {
 
         return configuration.getAuthenticationManager();
     }
 
 
     // =========================================================
-    // 4. Security Filter Chain
+    // 4. Authentication Entry Point
+    // =========================================================
+    // This handles requests where authentication is missing
+    // or authentication failed.
+    //
+    // Instead of confusing 403, we return 401 Unauthorized.
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+
+        return (request, response, exception) -> {
+
+            response.setStatus(HttpServletResponseStatus.UNAUTHORIZED);
+
+            response.setContentType("application/json");
+
+            response.getWriter().write(
+                    """
+                    {
+                        "status": 401,
+                        "error": "Unauthorized",
+                        "message": "Authentication is required"
+                    }
+                    """
+            );
+        };
+    }
+
+
+    // =========================================================
+    // 5. Access Denied Handler
+    // =========================================================
+    // User is authenticated but does not have permission.
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+
+        return (request, response, exception) -> {
+
+            response.setStatus(HttpServletResponseStatus.FORBIDDEN);
+
+            response.setContentType("application/json");
+
+            response.getWriter().write(
+                    """
+                    {
+                        "status": 403,
+                        "error": "Forbidden",
+                        "message": "You do not have permission to access this resource"
+                    }
+                    """
+            );
+        };
+    }
+
+
+    // =========================================================
+    // 6. Security Filter Chain
     // =========================================================
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http) throws Exception {
+            HttpSecurity http
+    ) throws Exception {
 
         http
 
-                // Disable CSRF because this is a REST API
+                // -------------------------------------------------
+                // CSRF
+                // -------------------------------------------------
+
                 .csrf(csrf -> csrf.disable())
 
 
-                // Stateless authentication
+                // -------------------------------------------------
+                // Session Management
+                // -------------------------------------------------
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
@@ -95,30 +157,57 @@ public class SecurityConfig {
                 )
 
 
-                // Authentication provider
-                .authenticationProvider(authenticationProvider())
+                // -------------------------------------------------
+                // Authentication Provider
+                // -------------------------------------------------
+
+                .authenticationProvider(
+                        authenticationProvider()
+                )
 
 
-                // Authorization rules
+                // -------------------------------------------------
+                // Exception Handling
+                // -------------------------------------------------
+
+                .exceptionHandling(exception -> exception
+
+                        .authenticationEntryPoint(
+                                authenticationEntryPoint()
+                        )
+
+                        .accessDeniedHandler(
+                                accessDeniedHandler()
+                        )
+                )
+
+
+                // -------------------------------------------------
+                // Authorization
+                // -------------------------------------------------
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // Public authentication APIs
+                        // Public APIs
                         .requestMatchers(
                                 "/api/auth/register",
                                 "/api/auth/login"
                         ).permitAll()
 
-                        // Protected Key Management APIs
-                        .requestMatchers("/api/keys/**")
-                        .authenticated()
+                        // Protected Key APIs
+                        .requestMatchers(
+                                "/api/keys/**"
+                        ).authenticated()
 
-                        // Everything else requires authentication
-                        .anyRequest()
-                        .authenticated()
+                        // Everything else
+                        .anyRequest().authenticated()
                 )
 
 
-                // JWT filter
+                // -------------------------------------------------
+                // JWT Filter
+                // -------------------------------------------------
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
@@ -126,5 +215,17 @@ public class SecurityConfig {
 
 
         return http.build();
+    }
+
+
+    // =========================================================
+    // Small constants for HTTP status codes
+    // =========================================================
+
+    private static class HttpServletResponseStatus {
+
+        private static final int UNAUTHORIZED = 401;
+
+        private static final int FORBIDDEN = 403;
     }
 }
