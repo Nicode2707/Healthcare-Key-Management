@@ -1,5 +1,6 @@
 package com.healthcare.keymanagement.config;
 
+import com.healthcare.keymanagement.security.AuditLoggingFilter;
 import com.healthcare.keymanagement.security.JwtAuthenticationFilter;
 import com.healthcare.keymanagement.service.CustomUserDetailsService;
 
@@ -31,6 +32,8 @@ public class SecurityConfig {
     private final CustomUserDetailsService customUserDetailsService;
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    private final AuditLoggingFilter auditLoggingFilter;
 
 
     // =========================================================
@@ -76,10 +79,6 @@ public class SecurityConfig {
     // =========================================================
     // 4. Authentication Entry Point
     // =========================================================
-    // This handles requests where authentication is missing
-    // or authentication failed.
-    //
-    // Instead of confusing 403, we return 401 Unauthorized.
 
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
@@ -106,7 +105,6 @@ public class SecurityConfig {
     // =========================================================
     // 5. Access Denied Handler
     // =========================================================
-    // User is authenticated but does not have permission.
 
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
@@ -232,6 +230,18 @@ public class SecurityConfig {
 
                 .addFilterBefore(
                         jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
+
+                // -------------------------------------------------
+                // Audit Logging Filter
+                // -------------------------------------------------
+                // Runs after the JWT filter so that the
+                // SecurityContext can contain the authenticated user.
+
+                .addFilterAfter(
+                        auditLoggingFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
 
