@@ -1,12 +1,14 @@
 package com.healthcare.keymanagement.service;
 
-import com.healthcare.keymanagement.exception.KeyNotFoundException;
-import org.springframework.transaction.annotation.Transactional;
 import com.healthcare.keymanagement.entity.KeyMetadata;
 import com.healthcare.keymanagement.entity.KeyStatus;
+import com.healthcare.keymanagement.exception.KeyNotFoundException;
 import com.healthcare.keymanagement.repository.KeyMetadataRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,7 +46,6 @@ public class KeyMetadataService {
     }
 
     public List<KeyMetadata> getAll() {
-
         return repository.findAll();
     }
 
@@ -52,13 +53,13 @@ public class KeyMetadataService {
 
         KeyMetadata key =
                 repository.findByKeyIdAndStatus(
-                                keyId,
-                                KeyStatus.ACTIVE
+                        keyId,
+                        KeyStatus.ACTIVE
+                ).orElseThrow(() ->
+                        new KeyNotFoundException(
+                                "Active key not found: " + keyId
                         )
-                        .orElseThrow(() ->
-                                new KeyNotFoundException(
-                                        "Active key not found: " + keyId
-                                ));
+                );
 
         key.setStatus(KeyStatus.REVOKED);
         key.setRevokedAt(LocalDateTime.now());
@@ -71,13 +72,13 @@ public class KeyMetadataService {
 
         KeyMetadata oldKey =
                 repository.findByKeyIdAndStatus(
-                                keyId,
-                                KeyStatus.ACTIVE
+                        keyId,
+                        KeyStatus.ACTIVE
+                ).orElseThrow(() ->
+                        new KeyNotFoundException(
+                                "Active key not found: " + keyId
                         )
-                        .orElseThrow(() ->
-                                new KeyNotFoundException(
-                                        "Active key not found: " + keyId
-                                ));
+                );
 
         oldKey.setStatus(KeyStatus.ROTATED);
 
@@ -89,16 +90,11 @@ public class KeyMetadataService {
         String protectedKey =
                 keyProtectionService.protectKey(rawKey);
 
-        KeyMetadata newKey =
-                new KeyMetadata();
+        KeyMetadata newKey = new KeyMetadata();
 
         newKey.setKeyId(oldKey.getKeyId());
         newKey.setAlgorithm(oldKey.getAlgorithm());
-
-        newKey.setKeyVersion(
-                oldKey.getKeyVersion() + 1
-        );
-
+        newKey.setKeyVersion(oldKey.getKeyVersion() + 1);
         newKey.setStatus(KeyStatus.ACTIVE);
         newKey.setCreatedAt(LocalDateTime.now());
         newKey.setExpiresAt(oldKey.getExpiresAt());
@@ -106,4 +102,61 @@ public class KeyMetadataService {
 
         return repository.save(newKey);
     }
-   }
+
+    // ============================================================
+    // PHASE 12 — KEY ARCHIVAL
+    // ============================================================
+
+    @Transactional
+    public int archiveKey(String keyId) {
+
+        List<KeyMetadata> keys =
+                repository.findByKeyId(keyId);
+
+        // 1. Key does not exist
+        if (keys.isEmpty()) {
+            throw new KeyNotFoundException(
+                    "Key not found: " + keyId
+            );
+        }
+
+        // 2. Never archive an ACTIVE key
+        boolean activeKeyExists =
+                keys.stream()
+                        .anyMatch(key ->
+                                key.getStatus() == KeyStatus.ACTIVE
+                        );
+
+        if (activeKeyExists) {
+            throw new IllegalStateException(
+                    "Active key cannot be archived: " + keyId
+            );
+        }
+
+        // 3. Archive historical versions
+        int archivedCount = 0;
+
+        for (KeyMetadata key : keys) {
+
+            if (key.getStatus() == KeyStatus.ROTATED
+                    || key.getStatus() == KeyStatus.REVOKED
+                    || key.getStatus() == KeyStatus.EXPIRED) {
+
+                key.setStatus(KeyStatus.ARCHIVED);
+
+                archivedCount++;
+            }
+        }
+
+        // 4. Prevent duplicate archival
+        if (archivedCount == 0) {
+            throw new IllegalStateException(
+                    "Key is already archived: " + keyId
+            );
+        }
+
+        repository.saveAll(keys);
+
+        return archivedCount;
+    }
+}
