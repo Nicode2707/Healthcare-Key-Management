@@ -8,6 +8,7 @@ public interface KeyProtectionService {
 
     // Compatibility methods used by integration code
     default String protect(String key) {
+
         return protectKey(key);
     }
 
