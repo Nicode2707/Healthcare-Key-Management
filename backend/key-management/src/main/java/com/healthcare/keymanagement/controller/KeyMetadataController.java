@@ -1,5 +1,8 @@
 package com.healthcare.keymanagement.controller;
 
+import com.healthcare.keymanagement.dto.KeyMetadataRequest;
+import jakarta.validation.Valid;
+
 import com.healthcare.keymanagement.dto.KeyMetadataResponse;
 import com.healthcare.keymanagement.entity.KeyMetadata;
 import com.healthcare.keymanagement.service.KeyMetadataService;
@@ -18,7 +21,13 @@ public class KeyMetadataController {
 
     @PostMapping
     public KeyMetadataResponse create(
-            @RequestBody KeyMetadata keyMetadata) {
+            @Valid @RequestBody KeyMetadataRequest request) {
+
+        KeyMetadata keyMetadata = KeyMetadata.builder()
+                .keyId(request.getKeyId())
+                .algorithm(request.getAlgorithm())
+                .expiresAt(request.getExpiresAt())
+                .build();
 
         KeyMetadata saved =
                 service.create(keyMetadata);
