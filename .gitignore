@@ -43,3 +43,10 @@ Thumbs.db
 # Logs
 # ==============================
 *.log
+
+# ==============================
+# Blockchain generated artifacts
+# ==============================
+backend/key-management/codegen-classpath.txt
+blockchain/*.abi
+blockchain/*.bin

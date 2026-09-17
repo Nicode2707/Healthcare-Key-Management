@@ -20,4 +20,10 @@ public class BlockchainController {
 
         return blockchainService.getBlockchainClientVersion();
     }
+
+    @GetMapping("/owner")
+    public String getContractOwner() throws Exception {
+
+        return blockchainService.getContractOwner();
+    }
 }
