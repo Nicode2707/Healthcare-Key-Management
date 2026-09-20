@@ -24,6 +24,9 @@ public class KeyRecoveryService {
     private final KeyMetadataRepository keyMetadataRepository;
     private final KeyRecoveryRequestRepository recoveryRequestRepository;
 
+    private final LifecycleIntegrityService lifecycleIntegrityService;
+    private final BlockchainService blockchainService;
+
 
     // ============================================================
     // 1. CREATE EMERGENCY RECOVERY REQUEST
@@ -303,7 +306,7 @@ public class KeyRecoveryService {
 
 
         // --------------------------------------------------------
-        // 5. Find the latest recoverable ARCHIVED version
+        // 5. Find latest recoverable ARCHIVED version
         // --------------------------------------------------------
 
         LocalDateTime now =
@@ -346,13 +349,40 @@ public class KeyRecoveryService {
          */
         recoverableKey.setRevokedAt(null);
 
-        keyMetadataRepository.save(
-                recoverableKey
+
+        KeyMetadata savedKey =
+                keyMetadataRepository.save(
+                        recoverableKey
+                );
+
+
+        // --------------------------------------------------------
+        // 7. Generate deterministic integrity hash
+        // --------------------------------------------------------
+
+        String recordHash =
+                lifecycleIntegrityService.generateRecordHash(
+                        savedKey.getKeyId(),
+                        savedKey.getKeyVersion(),
+                        "RECOVERED"
+                );
+
+
+        // --------------------------------------------------------
+        // 8. Record RECOVERED lifecycle evidence
+        //    on blockchain
+        // --------------------------------------------------------
+
+        blockchainService.recordKeyLifecycleEvent(
+                savedKey.getKeyId(),
+                savedKey.getKeyVersion(),
+                5,
+                recordHash
         );
 
 
         // --------------------------------------------------------
-        // 7. Mark recovery request COMPLETED
+        // 9. Mark recovery request COMPLETED
         // --------------------------------------------------------
 
         recoveryRequest.setStatus(

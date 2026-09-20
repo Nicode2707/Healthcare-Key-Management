@@ -20,35 +20,83 @@ public class KeyMetadataService {
     private final KeyMetadataRepository repository;
     private final AesKeyService aesKeyService;
     private final KeyProtectionService keyProtectionService;
+    private final LifecycleIntegrityService lifecycleIntegrityService;
+    private final BlockchainService blockchainService;
 
+
+    // =========================================================
+    // CREATE KEY
+    // =========================================================
+
+    @Transactional
     public KeyMetadata create(KeyMetadata keyMetadata) {
 
-        String rawKey = aesKeyService.generateAes256Key();
+        // Generate AES-256 key
+        String rawKey =
+                aesKeyService.generateAes256Key();
 
+        // Protect key before database storage
         String protectedKey =
                 keyProtectionService.protectKey(rawKey);
 
         keyMetadata.setProtectedKey(protectedKey);
 
+        // Default status
         if (keyMetadata.getStatus() == null) {
             keyMetadata.setStatus(KeyStatus.ACTIVE);
         }
 
+        // First version
         if (keyMetadata.getKeyVersion() == null) {
             keyMetadata.setKeyVersion(1);
         }
 
+        // Creation timestamp
         if (keyMetadata.getCreatedAt() == null) {
             keyMetadata.setCreatedAt(LocalDateTime.now());
         }
 
-        return repository.save(keyMetadata);
+        // Save operational data in MySQL
+        KeyMetadata savedKey =
+                repository.save(keyMetadata);
+
+
+        // Generate deterministic integrity hash
+        String recordHash =
+                lifecycleIntegrityService.generateRecordHash(
+                        savedKey.getKeyId(),
+                        savedKey.getKeyVersion(),
+                        "CREATED"
+                );
+
+
+        // Record lifecycle evidence on blockchain
+        blockchainService.recordKeyLifecycleEvent(
+                savedKey.getKeyId(),
+                savedKey.getKeyVersion(),
+                0,
+                recordHash
+        );
+
+        return savedKey;
     }
 
+
+    // =========================================================
+    // GET ALL KEYS
+    // =========================================================
+
     public List<KeyMetadata> getAll() {
+
         return repository.findAll();
     }
 
+
+    // =========================================================
+    // REVOKE KEY
+    // =========================================================
+
+    @Transactional
     public KeyMetadata revokeKey(String keyId) {
 
         KeyMetadata key =
@@ -61,11 +109,39 @@ public class KeyMetadataService {
                         )
                 );
 
+
+        // Change operational status
         key.setStatus(KeyStatus.REVOKED);
         key.setRevokedAt(LocalDateTime.now());
 
-        return repository.save(key);
+        KeyMetadata savedKey =
+                repository.save(key);
+
+
+        // Generate integrity evidence
+        String recordHash =
+                lifecycleIntegrityService.generateRecordHash(
+                        savedKey.getKeyId(),
+                        savedKey.getKeyVersion(),
+                        "REVOKED"
+                );
+
+
+        // Record on blockchain
+        blockchainService.recordKeyLifecycleEvent(
+                savedKey.getKeyId(),
+                savedKey.getKeyVersion(),
+                2,
+                recordHash
+        );
+
+        return savedKey;
     }
+
+
+    // =========================================================
+    // ROTATE KEY
+    // =========================================================
 
     @Transactional
     public KeyMetadata rotateKey(String keyId) {
@@ -80,32 +156,63 @@ public class KeyMetadataService {
                         )
                 );
 
+
+        // Old version becomes ROTATED
         oldKey.setStatus(KeyStatus.ROTATED);
 
         repository.save(oldKey);
 
+
+        // Generate new AES-256 key
         String rawKey =
                 aesKeyService.generateAes256Key();
 
         String protectedKey =
                 keyProtectionService.protectKey(rawKey);
 
-        KeyMetadata newKey = new KeyMetadata();
+
+        // Create new version
+        KeyMetadata newKey =
+                new KeyMetadata();
 
         newKey.setKeyId(oldKey.getKeyId());
         newKey.setAlgorithm(oldKey.getAlgorithm());
-        newKey.setKeyVersion(oldKey.getKeyVersion() + 1);
+        newKey.setKeyVersion(
+                oldKey.getKeyVersion() + 1
+        );
         newKey.setStatus(KeyStatus.ACTIVE);
         newKey.setCreatedAt(LocalDateTime.now());
         newKey.setExpiresAt(oldKey.getExpiresAt());
         newKey.setProtectedKey(protectedKey);
 
-        return repository.save(newKey);
+
+        KeyMetadata savedKey =
+                repository.save(newKey);
+
+
+        // Rotation evidence belongs to the new version
+        String recordHash =
+                lifecycleIntegrityService.generateRecordHash(
+                        savedKey.getKeyId(),
+                        savedKey.getKeyVersion(),
+                        "ROTATED"
+                );
+
+
+        blockchainService.recordKeyLifecycleEvent(
+                savedKey.getKeyId(),
+                savedKey.getKeyVersion(),
+                1,
+                recordHash
+        );
+
+        return savedKey;
     }
 
-    // ============================================================
-    // PHASE 12 — KEY ARCHIVAL
-    // ============================================================
+
+    // =========================================================
+    // ARCHIVE KEY
+    // =========================================================
 
     @Transactional
     public int archiveKey(String keyId) {
@@ -113,14 +220,15 @@ public class KeyMetadataService {
         List<KeyMetadata> keys =
                 repository.findByKeyId(keyId);
 
-        // 1. Key does not exist
+
         if (keys.isEmpty()) {
+
             throw new KeyNotFoundException(
                     "Key not found: " + keyId
             );
         }
 
-        // 2. Never archive an ACTIVE key
+
         boolean activeKeyExists =
                 keys.stream()
                         .anyMatch(key ->
@@ -128,35 +236,58 @@ public class KeyMetadataService {
                         );
 
         if (activeKeyExists) {
+
             throw new IllegalStateException(
                     "Active key cannot be archived: " + keyId
             );
         }
 
-        // 3. Archive historical versions
-        int archivedCount = 0;
 
-        for (KeyMetadata key : keys) {
+        List<KeyMetadata> keysToArchive =
+                keys.stream()
+                        .filter(key ->
+                                key.getStatus() == KeyStatus.ROTATED
+                                        || key.getStatus() == KeyStatus.REVOKED
+                                        || key.getStatus() == KeyStatus.EXPIRED
+                        )
+                        .toList();
 
-            if (key.getStatus() == KeyStatus.ROTATED
-                    || key.getStatus() == KeyStatus.REVOKED
-                    || key.getStatus() == KeyStatus.EXPIRED) {
 
-                key.setStatus(KeyStatus.ARCHIVED);
+        if (keysToArchive.isEmpty()) {
 
-                archivedCount++;
-            }
-        }
-
-        // 4. Prevent duplicate archival
-        if (archivedCount == 0) {
             throw new IllegalStateException(
                     "Key is already archived: " + keyId
             );
         }
 
-        repository.saveAll(keys);
 
-        return archivedCount;
+        // Change MySQL status
+        for (KeyMetadata key : keysToArchive) {
+            key.setStatus(KeyStatus.ARCHIVED);
+        }
+
+        repository.saveAll(keysToArchive);
+
+
+        // Blockchain evidence for each transition
+        for (KeyMetadata key : keysToArchive) {
+
+            String recordHash =
+                    lifecycleIntegrityService.generateRecordHash(
+                            key.getKeyId(),
+                            key.getKeyVersion(),
+                            "ARCHIVED"
+                    );
+
+            blockchainService.recordKeyLifecycleEvent(
+                    key.getKeyId(),
+                    key.getKeyVersion(),
+                    3,
+                    recordHash
+            );
+        }
+
+
+        return keysToArchive.size();
     }
 }
