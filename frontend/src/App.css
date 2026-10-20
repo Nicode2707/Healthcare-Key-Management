@@ -174,3 +174,162 @@
 @media (max-width: 1100px) { .auth-main { gap: 4%; padding-left: 4%; padding-right: 4%; } .sidebar { width: 220px; min-width: 220px; } .dashboard-content { padding: 25px 23px 0; } .dashboard-header { padding: 0 23px; } .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .auth-header { height: 68px; padding: 0 18px; } .auth-header .auth-switch { display: none; } .auth-header .header-actions { gap: 8px; } .auth-main { grid-template-columns: 1fr; padding: 40px 20px; gap: 35px; } .auth-intro h1 { font-size: 39px; letter-spacing: -1.7px; } .auth-card { justify-self: center; max-width: 520px; } .trust-strip { margin-top: 22px; padding-top: 20px; } .sidebar { position: fixed; z-index: 10; inset: 0 auto 0 0; transform: translateX(-105%); transition: transform .2s; box-shadow: var(--shadow); } .sidebar.sidebar-open { transform: translateX(0); } .mobile-menu { display: inline-grid; flex-shrink: 0; } .dashboard-header { height: 73px; padding: 0 14px; gap: 10px; } .dashboard-header h2 { font-size: 14px; } .header-kicker { display: none; } .dashboard-header .header-actions { gap: 7px; } .profile-button { padding-right: 7px; } .profile-button > span:nth-child(2) { display: none; } .dashboard-content { padding: 24px 15px 0; } .welcome-row { align-items: flex-start; flex-direction: column; } .welcome-row h1 { font-size: 29px; } .stat-grid { gap: 10px; } .stat-card { padding: 14px; } .stat-card > strong { font-size: 19px; } .content-grid { grid-template-columns: 1fr; } .panel { padding: 19px; } .footer { font-size: 10px; } .team-modal { padding: 25px 19px; } .member-tag { display: none; } }
 @media (max-width: 390px) { .brand { font-size: 17px; } .auth-header .button { padding: 0 10px; font-size: 11px; } .auth-intro h1 { font-size: 34px; } .stat-card > span:nth-child(2) { font-size: 10px; } .team-card { gap: 9px; } }
+
+
+/* =========================================================
+   KEYSHIELD PROJECT TEAM TABLE — ACCESSIBLE THEME COLORS
+   Keeps the existing layout while improving row contrast.
+   ========================================================= */
+
+.team-modal table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.team-modal table th {
+  background: #213f6b;
+  color: #ffffff;
+  text-align: left;
+  font-weight: 800;
+  padding: 14px 16px;
+  border-bottom: 1px solid #365783;
+}
+
+.team-modal table td {
+  padding: 15px 16px;
+  color: var(--text);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.team-modal table th:last-child,
+.team-modal table td:last-child {
+  border-right: 0;
+}
+
+.team-modal table tbody tr:nth-child(even) td {
+  background: #edf4f8;
+  color: #173b39;
+}
+
+.team-modal table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Dark mode: use dark alternating rows, never pale rows with white text. */
+.theme-dark .team-modal table {
+  border-color: #3b5b53;
+  background: #1c302d;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.theme-dark .team-modal table th {
+  background: #244875;
+  color: #ffffff;
+  border-color: #3d608b;
+}
+
+.theme-dark .team-modal table td,
+.theme-dark .team-modal table tbody tr:nth-child(odd) td {
+  background: #1c302d;
+  color: #edf8f3;
+  border-color: #345149;
+}
+
+.theme-dark .team-modal table tbody tr:nth-child(even) td {
+  background: #263f3a;
+  color: #edf8f3;
+  border-color: #345149;
+}
+
+.theme-dark .team-modal table tbody tr:hover td {
+  background: #2d4b44;
+  color: #ffffff;
+}
+
+/* Slightly clearer project-information hierarchy in both themes. */
+.team-modal .eyebrow {
+  color: var(--primary);
+}
+
+.team-modal .team-note {
+  border-top-color: var(--border);
+}
+
+@media (max-width: 600px) {
+  .team-modal table th,
+  .team-modal table td {
+    padding: 11px 10px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+}
+
+
+/* =========================================================
+   PROJECT TEAM TABLE — THEME-AWARE ROW CONTRAST
+   TeamModal renders a CSS grid of divs, not a <table>.
+   These classes control the actual cells and fix dark mode.
+   ========================================================= */
+
+.team-modal .team-table-cell {
+  background: #ffffff;
+  color: #173b39;
+  border-color: #dce8e5;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.team-modal .team-table-cell-alt {
+  background: #edf4f8;
+  color: #173b39;
+}
+
+.theme-dark .team-modal .team-table-cell,
+.app.theme-dark .team-modal .team-table-cell {
+  background: #1c302d;
+  color: #edf8f3;
+  border-color: #345149;
+}
+
+.theme-dark .team-modal .team-table-cell-alt,
+.app.theme-dark .team-modal .team-table-cell-alt {
+  background: #263f3a;
+  color: #edf8f3;
+}
+
+.theme-dark .team-modal .team-table-cell strong,
+.app.theme-dark .team-modal .team-table-cell strong {
+  color: #f4fbf8;
+}
+
+.theme-dark .team-modal .team-table-cell .muted,
+.app.theme-dark .team-modal .team-table-cell .muted {
+  color: #b8cec5;
+}
+
+.theme-dark .team-modal .team-table-cell:hover,
+.app.theme-dark .team-modal .team-table-cell:hover {
+  background: #315248;
+  color: #ffffff;
+}
+
+.team-modal .team-table-header {
+  background: #203b68;
+  color: #ffffff;
+}
+
+@media (max-width: 600px) {
+  .team-modal .team-table-cell {
+    overflow-wrap: anywhere;
+    padding: 11px 10px !important;
+    font-size: 12px !important;
+  }
+}

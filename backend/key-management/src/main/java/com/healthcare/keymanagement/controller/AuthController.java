@@ -41,13 +41,9 @@ import java.util.Map;
 public class AuthController {
 
     private final UserRepository userRepository;
-
     private final PasswordEncoder passwordEncoder;
-
     private final AuthenticationManager authenticationManager;
-
     private final JwtService jwtService;
-
 
     // =========================================================
     // REGISTER
@@ -84,7 +80,6 @@ public class AuthController {
     ) {
 
         if (userRepository.existsByUsername(request.getUsername())) {
-
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of(
@@ -94,7 +89,6 @@ public class AuthController {
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of(
@@ -107,36 +101,23 @@ public class AuthController {
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(
-                        passwordEncoder.encode(
-                                request.getPassword()
-                        )
+                        passwordEncoder.encode(request.getPassword())
                 )
                 .role(Role.USER)
                 .build();
 
-        User savedUser =
-                userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(Map.of(
-                        "message",
-                        "User registered successfully",
-
-                        "userId",
-                        savedUser.getId(),
-
-                        "username",
-                        savedUser.getUsername(),
-
-                        "email",
-                        savedUser.getEmail(),
-
-                        "role",
-                        savedUser.getRole().name()
+                        "message", "User registered successfully",
+                        "userId", savedUser.getId(),
+                        "username", savedUser.getUsername(),
+                        "email", savedUser.getEmail(),
+                        "role", savedUser.getRole().name()
                 ));
     }
-
 
     // =========================================================
     // LOGIN
@@ -146,8 +127,8 @@ public class AuthController {
             summary = "Login and obtain JWT token",
             description = """
                     Authenticates a registered user using email
-                    and password and returns a JWT Bearer token.
-                    The token is required for protected APIs.
+                    and password and returns a JWT Bearer token,
+                    username, email, and role.
                     """
     )
     @ApiResponses({
@@ -180,26 +161,21 @@ public class AuthController {
                         )
                 );
 
-        User user =
-                (User) authentication.getPrincipal();
+        User user = (User) authentication.getPrincipal();
 
-        String token =
-                jwtService.generateToken(user);
+        String token = jwtService.generateToken(user);
 
         return ResponseEntity.ok(
                 Map.of(
-                        "message",
-                        "Login successful",
-
-                        "token",
-                        token,
-
-                        "type",
-                        "Bearer",
-
-                        "expiresIn",
-                        "24 hours"
+                        "message", "Login successful",
+                        "token", token,
+                        "type", "Bearer",
+                        "expiresIn", "24 hours",
+                        "username", user.getUsername(),
+                        "email", user.getEmail(),
+                        "role", user.getRole().name()
                 )
         );
     }
 }
+
