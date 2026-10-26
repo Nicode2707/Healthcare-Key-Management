@@ -243,5 +243,46 @@ public class KeyMetadataController {
                 key.getExpiresAt(),
                 key.getRevokedAt()
         );
+
+    }
+    // =========================================================
+// ARCHIVE KEY
+// =========================================================
+
+    @Operation(
+            summary = "Archive eligible key versions",
+            description = """
+                Archives eligible non-active versions of a key.
+                Active versions prevent archival.
+                Archival events are recorded on the blockchain.
+                """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Eligible key versions archived successfully"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication required"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Key not found"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Key cannot be archived"
+            )
+    })
+    @PatchMapping("/{keyId}/archive")
+    public int archiveKey(
+            @Parameter(
+                    description = "Logical identifier of the key",
+                    example = "PATIENT-DATA-001"
+            )
+            @PathVariable String keyId) {
+
+        return service.archiveKey(keyId);
     }
 }

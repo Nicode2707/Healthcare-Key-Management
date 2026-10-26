@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_34-d2c190b83f2a47490f77ae9eea558bc74c0bd8e2",
+  "solcVersion": "0.8.34",
+  "solcLongVersion": "0.8.34+commit.80d5c536",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.16.0"
+  },
+  "userSourceNameMap": {
+    "contracts/KeyLifecycleRegistry.sol": "project/contracts/KeyLifecycleRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "osaka",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/KeyLifecycleRegistry.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.34;\r\n\r\ncontract KeyLifecycleRegistry {\r\n\r\n    // =========================================================\r\n    // Owner\r\n    // =========================================================\r\n\r\n    address public owner;\r\n\r\n\r\n    // =========================================================\r\n    // Key Lifecycle Event Types\r\n    // =========================================================\r\n\r\n    enum EventType {\r\n        CREATED,\r\n        ROTATED,\r\n        REVOKED,\r\n        ARCHIVED,\r\n        EXPIRED,\r\n        RECOVERED\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Lifecycle Record\r\n    // =========================================================\r\n\r\n    struct LifecycleRecord {\r\n\r\n        string keyId;\r\n\r\n        uint256 version;\r\n\r\n        EventType eventType;\r\n\r\n        bytes32 recordHash;\r\n\r\n        uint256 timestamp;\r\n\r\n        address recordedBy;\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Storage\r\n    // =========================================================\r\n\r\n    mapping(bytes32 => LifecycleRecord[]) private keyEvents;\r\n\r\n    uint256 public totalRecords;\r\n\r\n\r\n    // =========================================================\r\n    // Events\r\n    // =========================================================\r\n\r\n    event KeyLifecycleRecorded(\r\n        bytes32 indexed keyIdHash,\r\n        string keyId,\r\n        uint256 version,\r\n        EventType eventType,\r\n        bytes32 recordHash,\r\n        uint256 timestamp,\r\n        address indexed recordedBy\r\n    );\r\n\r\n\r\n    // =========================================================\r\n    // Access Control\r\n    // =========================================================\r\n\r\n    modifier onlyOwner() {\r\n\r\n        require(\r\n            msg.sender == owner,\r\n            \"Only owner can record lifecycle events\"\r\n        );\r\n\r\n        _;\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Constructor\r\n    // =========================================================\r\n\r\n    constructor() {\r\n\r\n        owner = msg.sender;\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Record Key Lifecycle Event\r\n    // =========================================================\r\n\r\n    function recordKeyEvent(\r\n        string calldata keyId,\r\n        uint256 version,\r\n        EventType eventType,\r\n        bytes32 recordHash\r\n    )\r\n        external\r\n        onlyOwner\r\n    {\r\n\r\n        require(\r\n            bytes(keyId).length > 0,\r\n            \"Key ID cannot be empty\"\r\n        );\r\n\r\n        require(\r\n            version > 0,\r\n            \"Version must be greater than zero\"\r\n        );\r\n\r\n        require(\r\n            recordHash != bytes32(0),\r\n            \"Record hash cannot be empty\"\r\n        );\r\n\r\n\r\n        bytes32 keyIdHash =\r\n            keccak256(bytes(keyId));\r\n\r\n\r\n        keyEvents[keyIdHash].push(\r\n            LifecycleRecord({\r\n                keyId: keyId,\r\n                version: version,\r\n                eventType: eventType,\r\n                recordHash: recordHash,\r\n                timestamp: block.timestamp,\r\n                recordedBy: msg.sender\r\n            })\r\n        );\r\n\r\n\r\n        totalRecords++;\r\n\r\n\r\n        emit KeyLifecycleRecorded(\r\n            keyIdHash,\r\n            keyId,\r\n            version,\r\n            eventType,\r\n            recordHash,\r\n            block.timestamp,\r\n            msg.sender\r\n        );\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Get Number of Events for a Key\r\n    // =========================================================\r\n\r\n    function getEventCount(\r\n        string calldata keyId\r\n    )\r\n        external\r\n        view\r\n        returns (uint256)\r\n    {\r\n\r\n        bytes32 keyIdHash =\r\n            keccak256(bytes(keyId));\r\n\r\n        return keyEvents[keyIdHash].length;\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Get Specific Lifecycle Event\r\n    // =========================================================\r\n\r\n    function getKeyEvent(\r\n        string calldata keyId,\r\n        uint256 index\r\n    )\r\n        external\r\n        view\r\n        returns (\r\n            string memory,\r\n            uint256,\r\n            EventType,\r\n            bytes32,\r\n            uint256,\r\n            address\r\n        )\r\n    {\r\n\r\n        bytes32 keyIdHash =\r\n            keccak256(bytes(keyId));\r\n\r\n\r\n        require(\r\n            index < keyEvents[keyIdHash].length,\r\n            \"Event index out of range\"\r\n        );\r\n\r\n\r\n        LifecycleRecord memory record =\r\n            keyEvents[keyIdHash][index];\r\n\r\n\r\n        return (\r\n            record.keyId,\r\n            record.version,\r\n            record.eventType,\r\n            record.recordHash,\r\n            record.timestamp,\r\n            record.recordedBy\r\n        );\r\n    }\r\n\r\n\r\n    // =========================================================\r\n    // Transfer Ownership\r\n    // =========================================================\r\n\r\n    function transferOwnership(\r\n        address newOwner\r\n    )\r\n        external\r\n        onlyOwner\r\n    {\r\n\r\n        require(\r\n            newOwner != address(0),\r\n            \"New owner cannot be zero address\"\r\n        );\r\n\r\n        owner = newOwner;\r\n    }\r\n}"
+      }
+    }
+  }
+}

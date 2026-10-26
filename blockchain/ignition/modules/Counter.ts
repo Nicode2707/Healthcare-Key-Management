@@ -1,9 +1,7 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-export default buildModule("CounterModule", (m) => {
-  const counter = m.contract("Counter");
+export default buildModule("KeyLifecycleRegistryModule", (m) => {
+const keyLifecycleRegistry = m.contract("KeyLifecycleRegistry");
 
-  m.call(counter, "incBy", [5n]);
-
-  return { counter };
+return { keyLifecycleRegistry };
 });
